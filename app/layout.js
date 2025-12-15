@@ -1,4 +1,4 @@
-import "./global.css";
+import "./globals.css";
 import { AuthContextProvider } from "./_utils/auth-context";
 
 

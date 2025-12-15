@@ -1,85 +1,72 @@
 "use client";
 
 import Link from "next/link";
-import { useUserAuth } from "../_utils/hooks/useUserAuth";
+import { useUserAuth } from "./_utils/auth-context";
 
 export default function Page() {
-    const {
-        user,
-        loading,
-        gitHubSignIn,
-        firebaseSignOut
-    } = useUserAuth();
+  const { user, gitHubSignIn, firebaseSignOut } = useUserAuth();
 
-    const handleLogin = async () => {
-        await gitHubSignIn();
-    };
-
-    const handleSignout = async () => {
-        await firebaseSignOut();
+  const handleLogin = async () => {
+    try {
+      await gitHubSignIn();
+    } catch (error) {
+      console.error("GitHub sign-in failed:", error);
     }
+  };
 
-    if (loading) {
-        return(
-            <main className="min-h-screen flex items-center justify-center bg-black text-slate-100">
-                <p>Loading...</p>
-            </main>
-        );
+  const handleLogout = async () => {
+    try {
+      await firebaseSignOut();
+    } catch (error) {
+      console.error("Sign-out failed:", error);
     }
+  };
 
-    return (
-        <main className="min-h-screen flex items-center justify-center bg-black text-slate-100 p-4">
-            <div className="w-full max-w-md bg-slate-900 rounded-xl p-6 shadow-lg flex flex-col gap-4">
-                <h1 className="text-2xl font-bold text-center mb-2">Welcome to The Game Shelf</h1>
-                {user && (
-                    <>
-                    <p className="text-sm text-slate-300 text-center">
-                        Sign in with your Github account to start tracking your game collection :D.
-                    </p>
-                    <button
-                        type="button"
-                        onClick ={handleLogin}
-                        className="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 font-medium py-2 px-4 rounded-md transition"
-                        >Sign in with GitHub
-                        </button>
-                        </>
-                )}
+  return (
+    <main className="min-h-screen flex items-center justify-center">
+      <div className="bg-slate-900 text-slate-100 rounded-2xl px-10 py-8 shadow-xl text-center max-w-xl w-[480px]">
+        <h1 className="text-3xl font-bold mb-3">The Game Shelf</h1>
 
-                {user && (
-                    <>
-                    <p className="text-sm text-slate-300 text-center">
-                        Welcome, {user.email}!
-                    </p>
-                    <Link
-                        href="/shelf"
-                        className="w-full text-center bg-slate-700 hover:bg-slate-600 text-slate-100 font-medium py-2 px-4 rounded-md transition"
-                    >
-                        Go to Your Shelf
-                    </Link>
-                    <button
-                        type="button"
-                        onClick ={handleSignout}
-                        className="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 font-medium py-2 px-4 rounded-md transition"
-                        >Sign Out
-                        </button>
-                    </>
-                )}
+        {!user && (
+          <>
+            <p className="mb-6 text-slate-300">
+              Sign in and keep a simple list of the games you own.
+            </p>
+            <button
+              type="button"
+              onClick={handleLogin}
+              className="mt-2 inline-flex items-center justify-center rounded-md bg-orange-600 px-6 py-3 text-base font-semibold text-white hover:bg-orange-500 transition w-full"
+            >
+              Sign in with GitHub
+            </button>
+          </>
+        )}
 
-                {user && (
-                    <>
-                    <p className="text-sm text-slate-300 text-center">
-                        Logout.
-                    </p>
-                    <button
-                        type="button"
-                        onClick ={handleSignout}
-                        className="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 font-medium py-2 px-4 rounded-md transition"
-                        >Sign Out of GitHub
-                        </button>
-                        </>
-                )}
+        {user && (
+          <>
+            <p className="mt-2 text-sm text-slate-300">
+              Signed in as {user.displayName || user.email}
+            </p>
+
+            <div className="mt-6 flex flex-col gap-3 items-center">
+              <Link
+                href="/games"
+                className="inline-flex items-center justify-center rounded-md bg-orange-600 px-6 py-3 text-base font-semibold text-white hover:bg-orange-500 transition w-full"
+              >
+                Go to my game shelf
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="inline-flex items-center justify-center rounded-md border border-slate-500 px-5 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 transition w-full"
+              >
+                Log out
+              </button>
             </div>
-        
-        </main>
-    )
-};
+          </>
+        )}
+      </div>
+    </main>
+  );
+}

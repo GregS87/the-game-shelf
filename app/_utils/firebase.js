@@ -1,3 +1,5 @@
+console.log("Firebase key prefix:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.slice(0, 4));
+
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";

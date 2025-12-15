@@ -2,133 +2,173 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useUserAuth } from "../_utils/hooks/useUserAuth";
-import { getGames, addGame, removeGame } from "../_utils/firestore-service";
-import GameList from "./game-list";
+import { useUserAuth } from "../_utils/auth-context";
+import { getGames, addGame, removeGame } from "../_utils/game-shelf-service";
 import GameSearch from "./game-search";
+import GameList from "./game-list";
 import GameDetails from "./game-details";
 
 export default function GamesPage() {
-    const{ user, loading, firebaseSignOut } = useUserAuth();
-    const router = useRouter();
+  const router = useRouter();
+  const { user, loading } = useUserAuth();
 
-    const [ games, setGames ] = useState([]);
-    const [ loadingGames, setLoadingGames ] = useState(true);
-    const [ selectedGameId, setSelectedGameId ] = useState(null);
-    const [ selectedGame, setSelectedGame ] = useState(null);
+  const [games, setGames] = useState([]);
+  const [selectedGame, setSelectedGame] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [error, setError] = useState("");
 
-    useEffect(() => {
-        if (!loading && !user) {
-            router.push("/");
-        }
-    }, [user, loading, router]);
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/");
+    }
+  }, [loading, user, router]);
 
-    useEffect(() => {
-        if (!user) return;
+  useEffect(() => {
+    if (!user) return;
 
-        const loadGames = async () => {
-            try {
-                const items = await getGames(user.uid);
-                setGames(items);
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setLoadingGames(false);
-            }
-        };
-        loadGames();
-    }, [user]);
-
-    const handleAddGame = async (rawGame) => {
-        if (!user) return;
-
-        const primaryPlatform = rawGame.platforms && rawGame.platforms.length > 0
-            ? rawGame.platforms[0]
-            : "Unknown";
-
-        const gameToAdd = {
-            title: rawGame.title,
-            status: "backlog",
-            platform: primaryPlatform,
-            rawgId: rawGame.id,
-        };
-
-        try {
-            const id = await addGame(user.uid, gameToAdd);
-            setGames((prev) => [...prev, { ...gameToAdd, id }]);
-        } catch (error) {
-            console.error("Failed to add game:", error);
-        }
-    };
-
-    const handleRemoveGame = async (gameId) => {
-        if (!user) return;
-        try {
-            await removeGame(user.uid, gameId);
-            setGames((prev) => prev.filter((g) => g.id !== gameId));
-            if (selectedGameId === gameId) {
-                setSelectedGameId(null);
-                setSelectedGame(null);
-            }
-        } catch (error) {
-            console.error("Failed to remove game:", error);
-        }
-    };
-
-    const handleSelectGame = (gameId) => {
-        setSelectedGameId(gameId);
-        const game = games.find((g) => g.id === gameId) || null;
-        setSelectedGame(game);
-    };
-
-    const handleLogOut = async () => {
-        await firebaseSignOut();
-        router.push("/");
-    };
-
-    if (loading || (!user && !loading)) {
-        return (
-            <main className="min-h-screen flex items-center justify-center">
-                <p>Loading...</p>
-            </main>
-        );
+    async function loadGames() {
+      try {
+        const userGames = await getGames(user.uid);
+        setGames(userGames);
+      } catch (err) {
+        console.error("Error loading games", err);
+        setError("Could not load your game shelf.");
+      }
     }
 
+    loadGames();
+  }, [user]);
+
+  const handleAddGame = async (rawgGame, status = "backlog") => {
+    if (!user) return;
+
+    const newGame = {
+      title: rawgGame.title || rawgGame.name,
+      platform:
+        rawgGame.platforms?.[0]?.platform?.name ||
+        rawgGame.parent_platforms?.[0]?.platform?.name ||
+        "Unknown",
+      status,
+      rawgId: rawgGame.id,
+    };
+
+    try {
+      const id = await addGame(user.uid, newGame);
+      setGames((prev) => [...prev, { ...newGame, id }]);
+      setError("");
+    } catch (err) {
+      console.error("Error adding game", err);
+      setError("Could not add that game. Try again.");
+    }
+  };
+
+  const handleRemoveGame = async (gameId) => {
+    if (!user) return;
+
+    try {
+      await removeGame(user.uid, gameId);
+      setGames((prev) => prev.filter((g) => g.id !== gameId));
+      if (selectedGame && selectedGame.id === gameId) {
+        setSelectedGame(null);
+      }
+      setError("");
+    } catch (err) {
+      console.error("Error removing game", err);
+      setError("Could not remove that game.");
+    }
+  };
+
+  const handleSelectGame = (game) => {
+    setSelectedGame(game);
+  };
+
+  const filteredGames =
+    statusFilter === "all"
+      ? games
+      : games.filter((g) => g.status === statusFilter);
+
+  if (loading) {
     return (
-        <main className="">
-            <div className="">
-                <header className="">
-                    <h1 className="">My Game Shelf</h1>
-                    <button
-                        type="button"
-                        onClick={handleLogOut}
-                        className="">
-                        Sign Out
-                    </button>
-                </header>
+      <main className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100">
+        <p>Checking login…</p>
+      </main>
+    );
+  }
 
-                <div className="">
-                    <div className=""> 
-                        <GameSearch onAddGame={handleAddGame} />
-                        {loadingGames ? (
-                            <div className="">
-                                <p className="">Loading Collection...</p>
-                            </div>
-                        ) : (
-                            <GameList
-                                games={games}
-                                selectedGameId={selectedGameId}
-                                onSelectGame={handleSelectGame}
-                                onRemoveGame={handleRemoveGame}
-                            />
-                        )}
-                    </div>
+  if (!user) {
+    return null;
+  }
 
-                            <div className="">
-                                <GameDetails game={selectedGame} />
-                            </div>
-                        </div>
-                    </div>
-                </main>
-            );
-        }
+  return (
+    <main className="min-h-screen bg-slate-950 text-slate-100 p-4">
+      <div className="max-w-6xl mx-auto flex flex-col gap-6">
+        <header className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold">The Game Shelf</h1>
+          <p className="text-sm text-slate-300">
+            Logged in as {user.displayName || user.email}
+          </p>
+        </header>
+
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 flex flex-col gap-4">
+            <GameSearch onAddGame={handleAddGame} />
+
+            <div className="flex items-center gap-3 text-sm">
+              <span>Filter:</span>
+              <FilterButton
+                label="All"
+                active={statusFilter === "all"}
+                onClick={() => setStatusFilter("all")}
+              />
+              <FilterButton
+                label="Backlog"
+                active={statusFilter === "backlog"}
+                onClick={() => setStatusFilter("backlog")}
+              />
+              <FilterButton
+                label="Finished"
+                active={statusFilter === "finished"}
+                onClick={() => setStatusFilter("finished")}
+              />
+            </div>
+
+            <GameList
+              games={filteredGames}
+              selectedGameId={selectedGame?.id ?? null}
+              onSelectGame={handleSelectGame}
+              onRemoveGame={handleRemoveGame}
+            />
+
+            {error && (
+              <p className="text-sm text-red-400 mt-2" role="alert">
+                {error}
+              </p>
+            )}
+          </div>
+
+          <div className="lg:col-span-1">
+            <GameDetails game={selectedGame} />
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function FilterButton({ label, active, onClick }) {
+  const base =
+    "px-3 py-1 rounded-md border text-sm font-medium transition-colors";
+  const activeClasses = "bg-orange-600 text-white border-orange-600";
+  const inactiveClasses =
+    "bg-slate-800 text-slate-100 border-slate-600 hover:bg-slate-700";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${base} ${active ? activeClasses : inactiveClasses}`}
+    >
+      {label}
+    </button>
+  );
+}

@@ -4,90 +4,79 @@ import { useEffect, useState } from "react";
 import { getGameDetails } from "../_utils/rawg-service";
 
 export default function GameDetails({ game }) {
-    const [ details, setDetails ] = useState(null);
-    const [ loading, setLoading ] = useState(false);
-    const [ error, setError ] = useState("");
+  const [details, setDetails] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-    useEffect(() => {
-        if (!game){
-            setDetails(null);
-            return;
-        }
+  useEffect(() => {
+    if (!game) {
+      setDetails(null);
+      setError("");
+      return;
+    }
 
-        const loadDetails = async () => {
-            setLoading(true);
-            setError("");
-            try {
-                const data = await getGameDetails(game.rawgId);
-                setDetails(data);
-            } catch (error){
-                console.error(error);
-                setError("Failed to load game information.");
-            }
-        };
-        loadDetails();
-    }, [game]);
+    const loadDetails = async () => {
+      setIsLoading(true);
+      setError("");
 
-    return(
-        <section className="bg-slate-900 text-slate-100 rounded-xl p-6 shadow-lg w-full mb-4">
-            <h2 className="text-x1 font-bold mb-3">Game Details</h2>
+      try {
+        const data = await getGameDetails(game.rawgId || game.id);
+        setDetails(data);
+      } catch (err) {
+        console.error("Error loading details", err);
+        setError("Could not load game details.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-            {!game && (
-                <p className="text-sm text-slate-300">Select a game to see details.</p>
-            )}
+    loadDetails();
+  }, [game]);
 
-            {game && loading && <p className="text-sm">Loading game details</p>}
+  return (
+    <section className="bg-slate-900 text-slate-100 rounded-xl p-4 shadow-lg h-full">
+      <h2 className="text-lg font-semibold mb-3">Game Details</h2>
 
-            {error && <p className="text-red-400 mb-2">{error}</p>}
+      {!game && (
+        <p className="text-sm text-slate-300">
+          Select a game from your shelf or from search results to view details.
+        </p>
+      )}
 
-            {game && details && (
-                <div className="space-y-3">
-                    <div className="flex gap-4">
-                        {details.imageURL && (
-                            <img
-                                src={details.imageURL}
-                                alt={details.title}
-                                className="w-32 h-32 object-cover rounded-md    "
-                            />
-                        )}
-                    </div>
+      {game && isLoading && (
+        <p className="text-sm text-slate-300">Loading details…</p>
+      )}
 
-                    <h3 className="text-lg font-semibold">{details.title}</h3>
-                    <p className="text-xs text-slate-300">
-                        {details.released && <> Released: {details.released} - </>}
-                        Rating: {details.rating ?? "N/A"}
-                    </p>
+      {game && !isLoading && error && (
+        <p className="text-sm text-red-400" role="alert">
+          {error}
+        </p>
+      )}
 
-                    {details.genres?.length > 0 && (
-                        <p className="text-sm text-slate-300">
-                            Genres: {details.genres.join(", ")}
-                        </p>
-                    )}
-
-                    {details.platforms?.length > 0 && (
-                        <p className="text-sm text-slate-300">
-                            Platforms: {details.platforms.join(", ")}
-                        </p>
-                    )}
-
-                    {details.website && (
-                        <a
-                            href={details.website}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-sm text-blue-400 underline"
-                        >
-                            Visit Website
-                        </a>
-                    )}
-
-                    {details.description && (
-                        <p className="text-sm text-slate-200 whitespace-pre-line max-h-64 overflow-y-auto">
-                            {details.description}
-                        </p>
-                    )}
-                </div>
-            )}
-        </section>
-    );
+      {game && !isLoading && !error && details && (
+        <div className="space-y-2">
+          <p className="text-lg font-bold">{details.name}</p>
+          <p className="text-xs text-slate-300">
+            Released: {details.released || "Unknown"} • Rating:{" "}
+            {details.rating ? `${details.rating} / 5` : "N/A"}
+          </p>
+          {details.website && (
+            <a
+              href={details.website}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block mt-2 text-xs px-3 py-1 rounded-md border border-orange-500 hover:bg-orange-500 hover:text-slate-900"
+            >
+              Official site
+            </a>
+          )}
+          {details.description && (
+            <p className="text-sm text-slate-200 whitespace-pre-line max-h-64 overflow-y-auto">
+              {details.description}
+            </p>
+          )}
+        </div>
+      )}
+    </section>
+  );
 }

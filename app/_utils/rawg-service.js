@@ -1,5 +1,4 @@
-// app/_services/rawg-service.js
-const API_BASE = process.env.NEXT_PUBLIC_RAWG_API_BASE_URL;
+const API_BASE = "https://api.rawg.io/api";
 const API_KEY = process.env.NEXT_PUBLIC_RAWG_API_KEY;
 
 export async function searchGames(query) {
@@ -18,35 +17,36 @@ export async function searchGames(query) {
 
   const data = await response.json();
 
-  if (!data.results) return [];
-
-  return data.results.map((game) => ({
+  return (data.results || []).map((game) => ({
     id: game.id,
     title: game.name,
+    imageUrl: game.background_image,
     released: game.released,
     rating: game.rating,
-    imageUrl: game.background_image,
-    platforms: game.parent_platforms?.map((p) => p.platform.name) ?? [],
+    platforms:
+      game.parent_platforms?.map((p) => p.platform.name) ??
+      game.platforms?.map((p) => p.platform.name) ??
+      [],
   }));
 }
 
-export async function getGameDetails(gameId) {
-  if (!gameId) return null;
+export async function getGameDetails(id) {
+  if (!id) return null;
 
-  const url = `${API_BASE}/games/${gameId}?key=${API_KEY}`;
+  const url = `${API_BASE}/games/${id}?key=${API_KEY}`;
 
   const response = await fetch(url);
 
   if (!response.ok) {
     console.error("RAWG details error", await response.text());
-    return null;
+    throw new Error("Failed to fetch game details");
   }
 
   const game = await response.json();
 
   return {
     id: game.id,
-    title: game.name,
+    name: game.name,
     description: game.description_raw || "",
     released: game.released,
     rating: game.rating,

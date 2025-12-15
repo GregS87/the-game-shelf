@@ -1,53 +1,45 @@
 "use client";
 
-import { 
-    useContext, 
-    createContext, 
-    useState, 
-    useEffect 
-} from "react";
-
+import { createContext, useContext, useEffect, useState } from "react";
 import {
-    signInWithPopup,
-    signOut,
-    onAuthStateChanged,
-    GithubAuthProvider
+  GithubAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
 } from "firebase/auth";
+import { auth } from "./firebase";
 
-import { auth } from "../_utils/firebase";
+const AuthContext = createContext(null);
 
-const AuthContext = createContext();
+export function AuthContextProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-export const AuthContextProvider = ({ children }) => {
-    const [ user, setUser ] = useState(null);
-    const [ loading, setloading ] = useState(true);
+  const gitHubSignIn = async () => {
+    const provider = new GithubAuthProvider();
+    return signInWithPopup(auth, provider);
+  };
 
-    const gitHubSignIn = () => {
-        const provider = new GithubAuthProvider();
-        return signInWithPopup(auth, provider);
-    };
+  const firebaseSignOut = () => signOut(auth);
 
-    const firebaeSignOut = () => {
-        signOut(auth);
-    };
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
 
-    useEffect(() =>{
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
-            setloading(false);
-        });
-        return () => {
-            unsubscribe();
-        };
-    }, []);
-    return(
-        <AuthContext.Provider value={{ 
-            gitHubSignIn, 
-            firebaeSignOut, 
-            user, 
-            loading }}
-        >
-            { children }
-        </AuthContext.Provider>
-    );
+    return () => unsub();
+  }, []);
+
+  return (
+    <AuthContext.Provider
+      value={{ user, loading, gitHubSignIn, firebaseSignOut }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useUserAuth() {
+  return useContext(AuthContext);
 }

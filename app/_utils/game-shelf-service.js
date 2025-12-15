@@ -1,52 +1,26 @@
 import { db } from "./firebase";
-import { 
-    collection, 
-    getDocs, 
-    addDoc,
-    query, 
-    deleteDoc, 
-    doc } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
 
-    export async function getGames(userId){
-        const itemsref = collection(
-            db,
-            "users",
-            userId,
-            "items"
-        );
-        const q = query(itemsref);
+// Each document in "users/{userId}/items" is one game on that user's shelf.
+function userItemsCollection(userId) {
+  return collection(db, "users", userId, "items");
+}
 
-        const snapshot = await getDocs(q);
-        const items = [];
+export async function getGames(userId) {
+  const snapshot = await getDocs(userItemsCollection(userId));
+  const games = [];
+  snapshot.forEach((docSnap) => {
+    games.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return games;
+}
 
-        snapshot.forEach((d) => {
-            items.push({
-                id: d.id,
-                ...d.data(),
-            });
-        });
+export async function addGame(userId, game) {
+  const docRef = await addDoc(userItemsCollection(userId), game);
+  return docRef.id;
+}
 
-        return items;
-    }
-
-    export async function addGame(userId, game){
-        const itemsRef = collection(
-            db,
-            "users",
-            userId,
-            "items"
-        )
-        const docRef = await addDoc(itemsRef, game);
-        return docRef.id;
-    }
-
-    export async function deleteGame(userId, gameId){
-        const docRef = doc(
-            db,
-            "users",
-            userId,
-            "items",
-            gameId
-        );
-        await deleteDoc(docRef);
-    }
+export async function removeGame(userId, gameId) {
+  const gameDocRef = doc(db, "users", userId, "items", gameId);
+  await deleteDoc(gameDocRef);
+}
