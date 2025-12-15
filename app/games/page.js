@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUserAuth } from "../_utils/auth-context";
 import { getGames, addGame, removeGame } from "../_utils/game-shelf-service";
-import GameSearch from "./game-search";
+import { GameSearch } from "./game-search";
 import GameList from "./game-list";
 import GameDetails from "./game-details";
 
